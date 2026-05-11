@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ═══════════════════════════════════════════════════════════════════════════════
-#   CB-INSTAHUNTER v1.0 — Ciberbrigada OSINT Suite
-#   Instagram OSINT — Perfil público sin login
+#   CB-INSTAHUNTER v2.0 — Ciberbrigada OSINT Suite
+#   Instagram OSINT — Datos reales en terminal, sin login
 #   Uso exclusivo para fines legales y educativos
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -10,9 +10,10 @@ import os
 import re
 import json
 import time
-import urllib.parse
-import hashlib
 import random
+import hashlib
+import datetime
+from collections import Counter
 
 try:
     import requests
@@ -24,39 +25,25 @@ except ImportError:
     from colorama import init, Fore, Style
     init(autoreset=True)
 
-# ── Colores ───────────────────────────────────────────────────────────────────
-C  = Fore.CYAN
-Y  = Fore.YELLOW
-G  = Fore.GREEN
-R  = Fore.RED
-W  = Fore.WHITE
-D  = Fore.WHITE + Style.DIM
-M  = Fore.MAGENTA
-B  = Style.BRIGHT
-RS = Style.RESET_ALL
+C  = Fore.CYAN;  Y = Fore.YELLOW; G = Fore.GREEN
+R  = Fore.RED;   W = Fore.WHITE;  D = Fore.WHITE + Style.DIM
+M  = Fore.MAGENTA; B = Style.BRIGHT; RS = Style.RESET_ALL
 
-# ── Headers rotativos para evitar bloqueos ────────────────────────────────────
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
 ]
 
-def get_headers(mobile=False):
-    ua = USER_AGENTS[3] if mobile else random.choice(USER_AGENTS[:3])
+def get_headers():
     return {
-        "User-Agent": ua,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7",
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.9",
+        "Accept-Language": "es-AR,es;q=0.9,en-US;q=0.8",
         "Accept-Encoding": "gzip, deflate, br",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Cache-Control": "max-age=0",
     }
 
 def get_api_headers():
@@ -64,15 +51,10 @@ def get_api_headers():
         "User-Agent": USER_AGENTS[3],
         "Accept": "*/*",
         "Accept-Language": "es-AR,es;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
         "X-IG-App-ID": "936619743392459",
         "X-Requested-With": "XMLHttpRequest",
         "Referer": "https://www.instagram.com/",
         "Origin": "https://www.instagram.com",
-        "Connection": "keep-alive",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
     }
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -80,9 +62,8 @@ def get_api_headers():
 # ══════════════════════════════════════════════════════════════════════════════
 def banner():
     os.system("cls" if os.name == "nt" else "clear")
-    CYAN = '\033[96m'; ORAN = '\033[38;5;208m'
-    DIM  = '\033[2m\033[37m'; BOLD = '\033[1m'
-    YEL  = '\033[33m'; RST  = '\033[0m'
+    CYAN='\033[96m'; ORAN='\033[38;5;208m'; DIM='\033[2m\033[37m'
+    BOLD='\033[1m';  YEL='\033[33m';        RST='\033[0m'
     logo = [
         "              ...::::...               ",
         "              ..:::+: ....             ",
@@ -110,161 +91,108 @@ def banner():
     print()
     print(f"  {CYAN}{BOLD}Ciber{ORAN}brigada{RST} {CYAN}OSINT Suite{RST}  {DIM}─────────────────────{RST}")
     print(f"  {BOLD}╔══════════════════════════════════════════╗{RST}")
-    print(f"  {BOLD}║  📸  CB-INSTAHUNTER  v1.0               ║{RST}")
-    print(f"  {BOLD}║  Instagram OSINT — Perfil público       ║{RST}")
+    print(f"  {BOLD}║  📸  CB-INSTAHUNTER  v2.0               ║{RST}")
+    print(f"  {BOLD}║  Instagram OSINT — Datos en terminal    ║{RST}")
     print(f"  {BOLD}╚══════════════════════════════════════════╝{RST}")
     print(f"  {DIM}[ ciberbrigada.com ]  [ OSINT Suite ]{RST}")
     print(f"  {YEL}⚠  Solo para uso legal, ético y educativo  ⚠{RST}")
     print()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# HELPERS
-# ══════════════════════════════════════════════════════════════════════════════
-def sep(titulo=""):
-    if titulo:
-        pad = (56 - len(titulo)) // 2
-        print(f"\n{C}{'─'*pad} {B}{titulo}{RS}{C} {'─'*pad}{RS}")
+def sep(t=""):
+    if t:
+        pad = (56 - len(t)) // 2
+        print(f"\n{C}{'─'*pad} {B}{t}{RS}{C} {'─'*pad}{RS}")
     else:
         print(f"{D}{'─'*60}{RS}")
 
-def ok(msg):    print(f"  {G}{B}[✓]{RS} {W}{msg}{RS}")
-def warn(msg):  print(f"  {Y}[!]{RS} {Y}{msg}{RS}")
-def fail(msg):  print(f"  {R}[✗]{RS} {D}{msg}{RS}")
-def info(msg):  print(f"  {C}[i]{RS} {W}{msg}{RS}")
-def dato(k, v): print(f"  {C}  ▸ {D}{k}:{RS} {W}{B}{v}{RS}")
+def ok(m):    print(f"  {G}{B}[✓]{RS} {W}{m}{RS}")
+def warn(m):  print(f"  {Y}[!]{RS} {Y}{m}{RS}")
+def fail(m):  print(f"  {R}[✗]{RS} {D}{m}{RS}")
+def info(m):  print(f"  {C}[i]{RS} {W}{m}{RS}")
+def dato(k,v):print(f"  {C}  ▸ {D}{k}:{RS} {W}{B}{v}{RS}")
 
-def fmt_number(n):
+def fmt_num(n):
     try:
         n = int(n)
         if n >= 1_000_000: return f"{n/1_000_000:.1f}M"
         if n >= 1_000:     return f"{n/1_000:.1f}K"
         return str(n)
-    except:
-        return str(n)
+    except: return str(n)
+
+def ts_to_date(ts):
+    try: return datetime.datetime.fromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M")
+    except: return "—"
 
 # ══════════════════════════════════════════════════════════════════════════════
-# EXTRACTOR PRINCIPAL — múltiples métodos
+# EXTRACTOR — múltiples métodos
 # ══════════════════════════════════════════════════════════════════════════════
 def extraer_perfil(username):
     data = {}
 
-    # Método 1: API privada de Instagram (?__a=1)
+    # Método 1: API ?__a=1 con sesión
     try:
-        session = requests.Session()
-        # Primero visitar la página principal para obtener cookies
-        session.get("https://www.instagram.com/", headers=get_headers(), timeout=10)
-        time.sleep(1)
-
-        r = session.get(
+        s = requests.Session()
+        s.get("https://www.instagram.com/", headers=get_headers(), timeout=10)
+        time.sleep(random.uniform(0.8, 1.5))
+        r = s.get(
             f"https://www.instagram.com/{username}/?__a=1&__d=dis",
-            headers=get_api_headers(),
-            timeout=12
+            headers=get_api_headers(), timeout=12
         )
         if r.status_code == 200:
-            try:
-                d = r.json()
-                user = d.get("graphql", {}).get("user") or d.get("data", {}).get("user") or d.get("user", {})
-                if user and user.get("username"):
-                    data["source"] = "API Instagram (?__a=1)"
-                    data["id"]              = user.get("id", "—")
-                    data["username"]        = user.get("username", "—")
-                    data["full_name"]       = user.get("full_name", "—")
-                    data["biography"]       = user.get("biography", "—")
-                    data["followers"]       = user.get("edge_followed_by", {}).get("count", 0)
-                    data["following"]       = user.get("edge_follow", {}).get("count", 0)
-                    data["posts"]           = user.get("edge_owner_to_timeline_media", {}).get("count", 0)
-                    data["is_private"]      = user.get("is_private", False)
-                    data["is_verified"]     = user.get("is_verified", False)
-                    data["is_business"]     = user.get("is_business_account", False)
-                    data["business_cat"]    = user.get("business_category_name", "—")
-                    data["external_url"]    = user.get("external_url", "—")
-                    data["profile_pic"]     = user.get("profile_pic_url_hd") or user.get("profile_pic_url", "—")
-                    data["highlight_count"] = user.get("highlight_reel_count", 0)
-                    data["igtv_count"]      = user.get("edge_felix_video_timeline", {}).get("count", 0)
+            d = r.json()
+            user = (d.get("graphql", {}).get("user") or
+                    d.get("data", {}).get("user") or
+                    d.get("user", {}))
+            if user and user.get("username"):
+                data["source"]       = "API Instagram"
+                data["id"]           = user.get("id", "—")
+                data["username"]     = user.get("username", "—")
+                data["full_name"]    = user.get("full_name", "—")
+                data["biography"]    = user.get("biography", "—")
+                data["followers"]    = user.get("edge_followed_by", {}).get("count", 0)
+                data["following"]    = user.get("edge_follow", {}).get("count", 0)
+                data["posts"]        = user.get("edge_owner_to_timeline_media", {}).get("count", 0)
+                data["is_private"]   = user.get("is_private", False)
+                data["is_verified"]  = user.get("is_verified", False)
+                data["is_business"]  = user.get("is_business_account", False)
+                data["business_cat"] = user.get("business_category_name", "")
+                data["external_url"] = user.get("external_url", "")
+                data["profile_pic"]  = user.get("profile_pic_url_hd") or user.get("profile_pic_url", "")
+                data["highlights"]   = user.get("highlight_reel_count", 0)
+                data["igtv"]         = user.get("edge_felix_video_timeline", {}).get("count", 0)
 
-                    # Posts recientes
-                    posts_edges = user.get("edge_owner_to_timeline_media", {}).get("edges", [])
-                    if posts_edges:
-                        data["recent_posts"] = []
-                        for edge in posts_edges[:6]:
-                            node = edge.get("node", {})
-                            data["recent_posts"].append({
-                                "shortcode":  node.get("shortcode", ""),
-                                "likes":      node.get("edge_liked_by", {}).get("count", 0),
-                                "comments":   node.get("edge_media_to_comment", {}).get("count", 0),
-                                "timestamp":  node.get("taken_at_timestamp", 0),
-                                "type":       node.get("__typename", "—"),
-                                "caption":    (node.get("edge_media_to_caption", {}).get("edges", [{}])[0]
-                                               .get("node", {}).get("text", "")[:100] if
-                                               node.get("edge_media_to_caption", {}).get("edges") else ""),
-                                "hashtags":   re.findall(r'#(\w+)', node.get("edge_media_to_caption", {})
-                                                        .get("edges", [{}])[0].get("node", {}).get("text", ""))
-                                              if node.get("edge_media_to_caption", {}).get("edges") else [],
-                            })
-                    return data
-            except (json.JSONDecodeError, KeyError):
-                pass
+                # Posts recientes
+                edges = user.get("edge_owner_to_timeline_media", {}).get("edges", [])
+                if edges:
+                    data["recent_posts"] = []
+                    for e in edges[:9]:
+                        node = e.get("node", {})
+                        caption_edges = node.get("edge_media_to_caption", {}).get("edges", [])
+                        caption_text  = caption_edges[0].get("node", {}).get("text", "") if caption_edges else ""
+                        data["recent_posts"].append({
+                            "shortcode": node.get("shortcode", ""),
+                            "likes":     node.get("edge_liked_by", {}).get("count", 0),
+                            "comments":  node.get("edge_media_to_comment", {}).get("count", 0),
+                            "timestamp": node.get("taken_at_timestamp", 0),
+                            "type":      node.get("__typename", "GraphImage"),
+                            "caption":   caption_text[:120],
+                            "hashtags":  re.findall(r'#(\w+)', caption_text),
+                            "location":  node.get("location", {}).get("name", "") if node.get("location") else "",
+                        })
+                return data
     except Exception:
         pass
 
-    # Método 2: Scraping del HTML de la página
+    # Método 2: Scraping HTML + Regex
     try:
-        session2 = requests.Session()
-        r2 = session2.get(
-            f"https://www.instagram.com/{username}/",
-            headers=get_headers(),
-            timeout=12
-        )
+        s2 = requests.Session()
+        r2 = s2.get(f"https://www.instagram.com/{username}/", headers=get_headers(), timeout=12)
+        if r2.status_code == 404:
+            return {"error": "Usuario no encontrado"}
+        if r2.status_code == 429:
+            return {"error": "Rate limit de Instagram — esperá unos minutos"}
         if r2.status_code == 200:
             html = r2.text
-
-            # Extraer JSON embebido en el HTML
-            patterns = [
-                r'window\._sharedData\s*=\s*({.+?});</script>',
-                r'"user":\s*({[^{}]+(?:{[^{}]*}[^{}]*)*})',
-                r'<script type="application/ld\+json">(.*?)</script>',
-            ]
-
-            for pattern in patterns:
-                match = re.search(pattern, html, re.DOTALL)
-                if match:
-                    try:
-                        raw = match.group(1)
-                        d = json.loads(raw)
-
-                        # Intentar extraer de _sharedData
-                        user = (d.get("entry_data", {})
-                                 .get("ProfilePage", [{}])[0]
-                                 .get("graphql", {})
-                                 .get("user", {}))
-
-                        if not user and d.get("@type") == "Person":
-                            # Schema.org JSON-LD
-                            data["source"]    = "HTML Schema.org"
-                            data["username"]  = username
-                            data["full_name"] = d.get("name", "—")
-                            data["biography"] = d.get("description", "—")
-                            data["external_url"] = d.get("url", "—")
-                            return data
-
-                        if user and user.get("username"):
-                            data["source"]       = "HTML _sharedData"
-                            data["id"]           = user.get("id", "—")
-                            data["username"]     = user.get("username", "—")
-                            data["full_name"]    = user.get("full_name", "—")
-                            data["biography"]    = user.get("biography", "—")
-                            data["followers"]    = user.get("edge_followed_by", {}).get("count", 0)
-                            data["following"]    = user.get("edge_follow", {}).get("count", 0)
-                            data["posts"]        = user.get("edge_owner_to_timeline_media", {}).get("count", 0)
-                            data["is_private"]   = user.get("is_private", False)
-                            data["is_verified"]  = user.get("is_verified", False)
-                            data["profile_pic"]  = user.get("profile_pic_url_hd", "—")
-                            data["external_url"] = user.get("external_url", "—")
-                            return data
-                    except Exception:
-                        continue
-
-            # Método 3: Regex directo sobre el HTML
             extractors = {
                 "followers":    r'"edge_followed_by":\{"count":(\d+)\}',
                 "following":    r'"edge_follow":\{"count":(\d+)\}',
@@ -277,438 +205,342 @@ def extraer_perfil(username):
                 "id":           r'"id":"(\d+)"',
                 "external_url": r'"external_url":"([^"]*)"',
                 "profile_pic":  r'"profile_pic_url_hd":"([^"]+)"',
+                "business_cat": r'"business_category_name":"([^"]*)"',
+                "highlights":   r'"highlight_reel_count":(\d+)',
+                "igtv":         r'"edge_felix_video_timeline":\{"count":(\d+)\}',
             }
-
             found = {}
             for key, pattern in extractors.items():
                 m = re.search(pattern, html)
                 if m:
                     val = m.group(1)
-                    if val in ("true", "false"):
-                        found[key] = val == "true"
-                    elif val.isdigit():
-                        found[key] = int(val)
+                    if val in ("true", "false"): found[key] = val == "true"
+                    elif val.isdigit():          found[key] = int(val)
                     else:
-                        found[key] = val.encode().decode('unicode_escape')
+                        try:    found[key] = val.encode().decode('unicode_escape')
+                        except: found[key] = val
 
-            if found.get("followers") or found.get("full_name"):
-                data["source"]   = "HTML Regex"
+            if found.get("followers") is not None or found.get("full_name"):
+                data["source"]   = "HTML Scraping"
                 data["username"] = username
                 data.update(found)
-
-                # Extraer hashtags del HTML
-                hashtags = list(set(re.findall(r'#(\w+)', html)))[:20]
-                if hashtags:
-                    data["hashtags_encontrados"] = hashtags
-
-                return data
-
-        elif r2.status_code == 404:
-            return {"error": "Usuario no encontrado (404)"}
-        elif r2.status_code == 429:
-            return {"error": "Rate limit de Instagram — esperá unos minutos"}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-    # Método 4: Picuki (mirror público de Instagram)
-    try:
-        r3 = requests.get(
-            f"https://www.picuki.com/profile/{username}",
-            headers=get_headers(),
-            timeout=12
-        )
-        if r3.status_code == 200:
-            html3 = r3.text
-            found3 = {}
-
-            patterns3 = {
-                "full_name":  r'<div class="profile-name-top">\s*<h1>([^<]+)</h1>',
-                "biography":  r'<div class="profile-description">\s*<p>([^<]+)</p>',
-                "followers":  r'Seguidores[^>]*>\s*<span[^>]*>([\d,\.KM]+)<',
-                "following":  r'Seguidos[^>]*>\s*<span[^>]*>([\d,\.KM]+)<',
-                "posts":      r'Publicaciones[^>]*>\s*<span[^>]*>([\d,\.KM]+)<',
-            }
-
-            for key, pat in patterns3.items():
-                m = re.search(pat, html3, re.IGNORECASE)
-                if m:
-                    found3[key] = m.group(1).strip()
-
-            if found3:
-                data["source"]   = "Picuki (mirror)"
-                data["username"] = username
-                data.update(found3)
                 return data
     except Exception:
         pass
 
-    return {"error": "No se pudieron obtener datos. El perfil puede ser privado o estar bloqueado."}
+    return {"error": "No se pudieron obtener datos. Puede ser cuenta privada o bloqueo temporal."}
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MÓDULO 1 — PERFIL
+# MÓDULO 1 — PERFIL COMPLETO
 # ══════════════════════════════════════════════════════════════════════════════
 def modulo_perfil(username, data):
     sep("PERFIL DE INSTAGRAM")
-
     if data.get("error"):
-        fail(data["error"])
-        return
+        fail(data["error"]); return
 
-    ok(f"Perfil encontrado — Fuente: {D}{data.get('source','—')}{RS}")
+    ok(f"Datos obtenidos — Método: {data.get('source','—')}")
     print()
 
-    dato("Username",       f"@{data.get('username','—')}")
-    dato("Nombre",         data.get("full_name", "—"))
-    dato("ID de usuario",  str(data.get("id", "—")))
+    dato("Username",      f"@{data.get('username','—')}")
+    dato("Nombre",        data.get("full_name", "—"))
+    dato("ID de usuario", str(data.get("id", "—")))
 
-    # Estado de cuenta
-    privado   = data.get("is_private", False)
-    verificado= data.get("is_verified", False)
-    negocio   = data.get("is_business", False)
+    # Estado
+    privado    = data.get("is_private", False)
+    verificado = data.get("is_verified", False)
+    negocio    = data.get("is_business", False)
 
     estado = []
     if verificado: estado.append(f"{G}✓ VERIFICADO{RS}")
     if privado:    estado.append(f"{Y}🔒 PRIVADO{RS}")
     else:          estado.append(f"{G}🌐 PÚBLICO{RS}")
-    if negocio:    estado.append(f"{C}💼 CUENTA BUSINESS{RS}")
-
-    print(f"  {C}  ▸ {D}Estado:{RS}         {'  '.join(estado)}")
+    if negocio:    estado.append(f"{C}💼 BUSINESS{RS}")
+    print(f"  {C}  ▸ {D}Estado:{RS}        {'  '.join(estado)}")
 
     cat = data.get("business_cat", "")
-    if cat and cat != "—": dato("Categoría business", cat)
+    if cat and cat != "—": dato("Categoría",   cat)
 
     bio = data.get("biography", "")
-    if bio and bio != "—":
-        dato("Biografía",      bio[:150] + ("..." if len(bio) > 150 else ""))
+    if bio and bio != "—": dato("Biografía",   bio[:160] + ("..." if len(bio) > 160 else ""))
 
     ext = data.get("external_url", "")
-    if ext and ext != "—": dato("Link externo",    ext)
+    if ext and ext != "—": dato("Link externo", ext)
 
     print()
+    sep_line = f"  {C}{B}── ESTADÍSTICAS ─────────────────────────{RS}"
+    print(sep_line)
 
-    # Estadísticas
-    followers = data.get("followers", 0)
-    following = data.get("following", 0)
-    posts     = data.get("posts", 0)
+    followers = int(data.get("followers", 0) or 0)
+    following = int(data.get("following", 0) or 0)
+    posts     = int(data.get("posts", 0) or 0)
 
-    if followers or following or posts:
-        print(f"  {C}{B}── ESTADÍSTICAS ──────────────────────────{RS}")
-        dato("Seguidores",    f"{fmt_number(followers)} ({followers:,})")
-        dato("Seguidos",      f"{fmt_number(following)} ({following:,})")
-        dato("Publicaciones", str(posts))
+    dato("Seguidores",     f"{fmt_num(followers)}  ({followers:,})")
+    dato("Seguidos",       f"{fmt_num(following)}  ({following:,})")
+    dato("Publicaciones",  str(posts))
 
-        if followers and following:
-            ratio = followers / following if following > 0 else followers
-            dato("Ratio follow",  f"{ratio:.2f}x")
+    if followers and following and following > 0:
+        ratio = followers / following
+        dato("Ratio seg/seg",  f"{ratio:.2f}x")
 
-        # Clasificación de influencer
-        if followers:
-            f = int(followers)
-            if f >= 1_000_000:   nivel = f"{Y}⭐ MEGA INFLUENCER (1M+){RS}"
-            elif f >= 100_000:   nivel = f"{G}⭐ MACRO INFLUENCER (100K+){RS}"
-            elif f >= 10_000:    nivel = f"{C}⭐ MICRO INFLUENCER (10K+){RS}"
-            elif f >= 1_000:     nivel = f"{W}⭐ NANO INFLUENCER (1K+){RS}"
-            else:                nivel = f"{D}Usuario regular{RS}"
-            print(f"  {C}  ▸ {D}Nivel:{RS}          {nivel}")
+    highlights = data.get("highlights", 0)
+    igtv       = data.get("igtv", 0)
+    if highlights: dato("Historias dest.", str(highlights))
+    if igtv:       dato("Videos IGTV",    str(igtv))
 
-    highlights = data.get("highlight_count", 0)
-    if highlights: dato("Destacados",    str(highlights))
-
-    igtv = data.get("igtv_count", 0)
-    if igtv: dato("Videos IGTV",    str(igtv))
-
-    # Links del perfil
     print()
-    print(f"  {C}{B}── LINKS ─────────────────────────────────{RS}")
-    dato("Perfil web",     f"https://www.instagram.com/{username}/")
-    dato("Foto perfil",    data.get("profile_pic", "—"))
+    # Nivel de influencer
+    if followers:
+        if followers >= 1_000_000:  nivel = f"{Y}{B}⭐ MEGA INFLUENCER  (+1M){RS}"
+        elif followers >= 100_000:  nivel = f"{G}{B}⭐ MACRO INFLUENCER (+100K){RS}"
+        elif followers >= 10_000:   nivel = f"{C}{B}⭐ MICRO INFLUENCER (+10K){RS}"
+        elif followers >= 1_000:    nivel = f"{W}⭐ NANO INFLUENCER  (+1K){RS}"
+        else:                       nivel = f"{D}Usuario regular{RS}"
+        print(f"  {C}  ▸ {D}Clasificación:{RS}  {nivel}")
 
-    pic_url = data.get("profile_pic", "")
-    if pic_url and pic_url != "—":
-        # Hash MD5 de la URL para referencia
-        dato("Hash foto",  hashlib.md5(pic_url.encode()).hexdigest()[:16] + "...")
+    # Foto de perfil (URL directa para descarga)
+    pic = data.get("profile_pic", "")
+    if pic and pic != "—":
+        print()
+        dato("Foto de perfil (HD)", pic)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MÓDULO 2 — POSTS RECIENTES
+# MÓDULO 2 — POSTS Y ENGAGEMENT
 # ══════════════════════════════════════════════════════════════════════════════
 def modulo_posts(username, data):
-    sep("POSTS RECIENTES")
+    sep("PUBLICACIONES Y ENGAGEMENT")
+
+    if data.get("is_private"):
+        warn("Cuenta privada — posts no visibles"); return
 
     posts = data.get("recent_posts", [])
     if not posts:
-        if data.get("is_private"):
-            warn("Cuenta privada — no se pueden ver los posts")
-        else:
-            warn("No se pudieron extraer posts (posible rate limit)")
+        warn("No se pudieron extraer posts (posible rate limit o cuenta privada)")
         return
 
-    ok(f"Últimos {len(posts)} posts analizados:")
+    ok(f"Últimos {len(posts)} posts analizados")
     print()
 
     total_likes    = 0
     total_comments = 0
     all_hashtags   = []
+    all_locations  = []
+
+    tipo_icons = {"GraphImage": "📷 Foto", "GraphVideo": "🎥 Video", "GraphSidecar": "📎 Carrusel"}
 
     for i, post in enumerate(posts, 1):
-        shortcode = post.get("shortcode", "")
-        likes     = post.get("likes", 0)
-        comments  = post.get("comments", 0)
-        ts        = post.get("timestamp", 0)
-        tipo      = post.get("type", "—")
-        caption   = post.get("caption", "")
-        hashtags  = post.get("hashtags", [])
+        likes    = int(post.get("likes", 0))
+        comments = int(post.get("comments", 0))
+        ts       = post.get("timestamp", 0)
+        tipo     = post.get("type", "GraphImage")
+        caption  = post.get("caption", "")
+        hashtags = post.get("hashtags", [])
+        location = post.get("location", "")
+        shortcode= post.get("shortcode", "")
 
         total_likes    += likes
         total_comments += comments
         all_hashtags   += hashtags
+        if location: all_locations.append(location)
 
-        # Fecha
-        fecha = "—"
-        if ts:
-            import datetime
-            fecha = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
-
-        tipo_icon = {"GraphImage": "📷", "GraphVideo": "🎥", "GraphSidecar": "📎"}.get(tipo, "📷")
-
-        print(f"  {C}{B}[Post #{i}]{RS} {tipo_icon} {D}{shortcode}{RS}")
-        dato("  URL",       f"https://www.instagram.com/p/{shortcode}/")
-        dato("  Fecha",     fecha)
-        dato("  Likes",     fmt_number(likes))
-        dato("  Comentarios", fmt_number(comments))
+        tipo_str = tipo_icons.get(tipo, "📷 Foto")
+        print(f"  {C}{B}── Post #{i}  {tipo_str}{RS}")
+        dato("  Fecha",        ts_to_date(ts))
+        dato("  Shortcode",    shortcode)
+        dato("  Likes",        f"{fmt_num(likes)} ({likes:,})")
+        dato("  Comentarios",  f"{fmt_num(comments)} ({comments:,})")
         if caption:
-            dato("  Caption",  caption[:80] + ("..." if len(caption) > 80 else ""))
+            dato("  Caption",  caption[:100] + ("..." if len(caption) > 100 else ""))
         if hashtags:
-            dato("  Hashtags", " ".join([f"#{h}" for h in hashtags[:8]]))
+            dato("  Hashtags", "  ".join([f"#{h}" for h in hashtags[:10]]))
+        if location:
+            dato("  Ubicación", location)
         print()
 
     # Resumen de engagement
-    if total_likes or total_comments:
-        followers = data.get("followers", 0)
-        sep("ENGAGEMENT")
-        dato("Total likes",     fmt_number(total_likes))
-        dato("Total comentarios", fmt_number(total_comments))
-        avg_likes = total_likes // len(posts) if posts else 0
-        avg_com   = total_comments // len(posts) if posts else 0
-        dato("Promedio likes/post",    fmt_number(avg_likes))
-        dato("Promedio comentarios",   fmt_number(avg_com))
+    if posts:
+        sep("RESUMEN DE ENGAGEMENT")
+        n         = len(posts)
+        avg_likes = total_likes // n
+        avg_com   = total_comments // n
+        followers = int(data.get("followers", 0) or 0)
+
+        dato("Total likes analizados",       f"{total_likes:,}")
+        dato("Total comentarios analizados", f"{total_comments:,}")
+        dato("Promedio likes/post",          fmt_num(avg_likes))
+        dato("Promedio comentarios/post",    fmt_num(avg_com))
 
         if followers:
-            eng_rate = ((avg_likes + avg_com) / followers) * 100
-            dato("Tasa de engagement",  f"{eng_rate:.2f}%")
-            if eng_rate > 6:    nivel = f"{G}🔥 EXCELENTE (>6%){RS}"
-            elif eng_rate > 3:  nivel = f"{C}✓ BUENO (3-6%){RS}"
-            elif eng_rate > 1:  nivel = f"{Y}~ PROMEDIO (1-3%){RS}"
-            else:               nivel = f"{D}▼ BAJO (<1%){RS}"
-            print(f"  {C}  ▸ {D}Nivel engagement:{RS} {nivel}")
+            eng = ((avg_likes + avg_com) / followers) * 100
+            dato("Tasa de engagement",       f"{eng:.2f}%")
+            if eng > 6:   nivel = f"{G}🔥 EXCELENTE (>6%){RS}"
+            elif eng > 3: nivel = f"{C}✓ BUENO (3-6%){RS}"
+            elif eng > 1: nivel = f"{Y}~ PROMEDIO (1-3%){RS}"
+            else:         nivel = f"{D}▼ BAJO (<1%){RS}"
+            print(f"  {C}  ▸ {D}Nivel:{RS}  {nivel}")
+
+        # Post más popular
+        mejor = max(posts, key=lambda x: int(x.get("likes", 0)))
+        print()
+        dato("Post más popular", f"{fmt_num(mejor.get('likes',0))} likes — {ts_to_date(mejor.get('timestamp',0))}")
+
+        # Horario de mayor actividad
+        horas = [datetime.datetime.fromtimestamp(int(p["timestamp"])).hour
+                 for p in posts if p.get("timestamp")]
+        if horas:
+            hora_comun = Counter(horas).most_common(1)[0][0]
+            dato("Hora más frecuente de publicación", f"{hora_comun:02d}:00 hs")
 
     # Top hashtags
     if all_hashtags:
+        print()
         sep("HASHTAGS MÁS USADOS")
-        from collections import Counter
-        top_tags = Counter(all_hashtags).most_common(15)
-        for tag, count in top_tags:
-            bar = "█" * min(count * 3, 20)
-            print(f"  {C}#{tag:<20}{RS} {G}{bar}{RS} {W}{count}{RS}")
+        top = Counter(all_hashtags).most_common(12)
+        for tag, count in top:
+            bar = "█" * min(count * 4, 24)
+            print(f"  {C}  #{tag:<22}{RS}{G}{bar}{RS} {W}{count}x{RS}")
+
+    # Ubicaciones
+    if all_locations:
+        print()
+        sep("UBICACIONES DETECTADAS")
+        for loc in list(set(all_locations)):
+            dato("Lugar", loc)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MÓDULO 3 — ANÁLISIS AVANZADO
+# MÓDULO 3 — ANÁLISIS DE INTELIGENCIA
 # ══════════════════════════════════════════════════════════════════════════════
-def modulo_analisis(username, data):
-    sep("ANÁLISIS AVANZADO")
-
+def modulo_inteligencia(username, data):
+    sep("ANÁLISIS DE INTELIGENCIA")
     if data.get("error"):
-        warn("Sin datos suficientes para análisis")
-        return
+        warn("Sin datos suficientes"); return
 
-    # Análisis de la biografía
-    bio = data.get("biography", "")
+    bio       = data.get("biography", "")
+    followers = int(data.get("followers", 0) or 0)
+    following = int(data.get("following", 0) or 0)
+    posts     = int(data.get("posts", 0) or 0)
+    privado   = data.get("is_private", False)
+
+    # ── Análisis de biografía ──────────────────────────────────────────────
     if bio and bio != "—":
-        print(f"  {C}{B}── ANÁLISIS DE BIOGRAFÍA ─────────────────{RS}")
+        print(f"  {C}{B}── DATOS ENCONTRADOS EN BIOGRAFÍA ────────{RS}\n")
 
-        # Emails en bio
         emails = re.findall(r'[\w.+-]+@[\w-]+\.[a-z]{2,}', bio)
-        if emails:
-            ok(f"Email encontrado en bio: {', '.join(emails)}")
+        for e in emails: ok(f"Email: {G}{e}{RS}")
 
-        # Teléfonos en bio
-        phones = re.findall(r'[\+\d][\d\s\-\(\)]{7,}', bio)
-        if phones:
-            ok(f"Teléfono encontrado en bio: {', '.join(phones)}")
+        phones = re.findall(r'(?:\+?\d[\d\s\-\(\)]{7,}\d)', bio)
+        for p in phones: ok(f"Teléfono: {G}{p.strip()}{RS}")
 
-        # URLs en bio
         urls = re.findall(r'https?://\S+|www\.\S+', bio)
-        if urls:
-            ok(f"URLs en bio: {', '.join(urls)}")
+        for u in urls: ok(f"URL: {G}{u}{RS}")
 
-        # Links de otras redes en bio
         redes = {
-            "Twitter/X":  r'twitter\.com/|x\.com/|@\w+',
-            "TikTok":     r'tiktok\.com/|tt\.me/',
+            "Twitter/X":  r'twitter\.com/|x\.com/|(?<!\w)@\w+',
+            "TikTok":     r'tiktok\.com/',
             "YouTube":    r'youtube\.com/|youtu\.be/',
             "LinkedIn":   r'linkedin\.com/',
             "Telegram":   r't\.me/|telegram',
             "WhatsApp":   r'wa\.me/|whatsapp',
             "Facebook":   r'facebook\.com/|fb\.com/',
+            "Twitch":     r'twitch\.tv/',
+            "Spotify":    r'open\.spotify\.com/',
         }
         for red, pat in redes.items():
             if re.search(pat, bio, re.IGNORECASE):
-                info(f"Referencia a {red} en la bio")
+                info(f"Referencia a {red} detectada en biografía")
 
-        # Idioma aproximado
-        if re.search(r'\b(the|and|is|in|of)\b', bio, re.IGNORECASE):
-            info("Idioma detectado: Inglés")
-        elif re.search(r'\b(de|la|el|en|es|un|una)\b', bio, re.IGNORECASE):
-            info("Idioma detectado: Español")
+        if not emails and not phones and not urls:
+            info("No se encontraron datos de contacto en la biografía")
 
-    # Análisis de seguidores
-    followers = int(data.get("followers", 0))
-    following = int(data.get("following", 0))
-    posts     = int(data.get("posts", 0))
+    # ── Análisis de comportamiento ─────────────────────────────────────────
+    print(f"\n  {C}{B}── ANÁLISIS DE COMPORTAMIENTO ────────────{RS}\n")
+
+    if privado:
+        warn("Cuenta PRIVADA — contenido restringido")
+    else:
+        ok("Cuenta PÚBLICA — contenido accesible")
 
     if followers and following:
-        print(f"\n  {C}{B}── ANÁLISIS DE COMPORTAMIENTO ────────────{RS}")
+        ratio = followers / following if following > 0 else followers
+        if ratio > 10:
+            ok(f"Ratio {ratio:.1f}x — Gran alcance orgánico")
+        elif ratio > 1:
+            info(f"Ratio {ratio:.1f}x — Perfil equilibrado")
+        else:
+            warn(f"Ratio {ratio:.2f}x — Sigue a más de los que le siguen")
 
-        # Ratio seguidor/seguido
-        if following > 0:
-            ratio = followers / following
-            if ratio > 10:
-                info(f"Ratio {ratio:.1f}x — Perfil con gran alcance orgánico")
-            elif ratio > 1:
-                info(f"Ratio {ratio:.1f}x — Perfil equilibrado")
-            else:
-                info(f"Ratio {ratio:.1f}x — Sigue a más personas de las que le siguen")
+    # Detección de anomalías
+    if followers > 50000 and posts < 20:
+        warn("Muchos seguidores con muy pocos posts — posible compra de seguidores")
+    if following > 7500:
+        warn("Sigue a más de 7500 cuentas — posible estrategia follow/unfollow")
+    if followers < 50 and following > 500:
+        warn("Perfil nuevo o posible bot/spam")
+    if posts > 500 and followers < 500:
+        warn("Muchos posts y pocos seguidores — baja visibilidad")
 
-        # Actividad estimada
-        if posts > 0:
-            posts_per_follower = followers / posts if posts else 0
-            if followers > 10000 and posts < 50:
-                warn("Pocos posts para la cantidad de seguidores — posible compra de seguidores")
-            elif posts > 1000:
-                info("Cuenta muy activa — más de 1000 publicaciones")
+    if followers > 10000 and posts > 50:
+        posts_per_1k = posts / (followers / 1000)
+        dato("Posts por cada 1K seguidores", f"{posts_per_1k:.1f}")
 
-        # Detección cuenta fantasma/bot
-        if followers > 10000 and following > 5000:
-            warn("Seguidos muy alto — posible estrategia follow/unfollow")
-        if followers < 100 and following > 1000:
-            warn("Posible cuenta bot o spam")
-
-    # Info adicional
-    print(f"\n  {C}{B}── LINKS ÚTILES ──────────────────────────{RS}")
-    dato("Perfil",        f"https://www.instagram.com/{username}/")
-    dato("Posts",         f"https://www.instagram.com/{username}/posts/")
-    dato("Reels",         f"https://www.instagram.com/{username}/reels/")
-    dato("Tagged",        f"https://www.instagram.com/{username}/tagged/")
-    dato("Picuki mirror", f"https://www.picuki.com/profile/{username}")
-    dato("Imginn mirror", f"https://imginn.com/{username}/")
-    dato("InstaDP foto",  f"https://www.instadp.com/fullsize/{username}")
+    # Idioma de la bio
+    if bio:
+        if re.search(r'\b(the|and|is|in|of|you|for)\b', bio, re.IGNORECASE):
+            info("Idioma detectado en bio: Inglés")
+        elif re.search(r'\b(de|la|el|en|es|un|una|por|con)\b', bio, re.IGNORECASE):
+            info("Idioma detectado en bio: Español")
+        elif re.search(r'\b(de|la|le|les|du|des|et|en)\b', bio, re.IGNORECASE):
+            info("Idioma detectado en bio: Francés/Portugués")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MÓDULO 4 — BÚSQUEDAS EXTERNAS
-# ══════════════════════════════════════════════════════════════════════════════
-def modulo_externo(username, data):
-    sep("BÚSQUEDAS EXTERNAS")
-
-    full_name = data.get("full_name", "")
-    bio       = data.get("biography", "")
-
-    print(f"  {C}{B}── GOOGLE DORKS ──────────────────────────{RS}")
-    dorks = [
-        (f'site:instagram.com "{username}"',              "Perfil en Google"),
-        (f'"@{username}" instagram',                       "Menciones con @"),
-        (f'"{username}" instagram filetype:pdf',           "En PDFs"),
-        (f'"{username}" instagram email OR correo',        "Email asociado"),
-    ]
-    if full_name and full_name != "—":
-        dorks += [
-            (f'"{full_name}" instagram',                   "Nombre completo"),
-            (f'"{full_name}" site:linkedin.com',           "LinkedIn del dueño"),
-            (f'"{full_name}" email OR correo OR mail',     "Email del dueño"),
-        ]
-
-    for dork, desc in dorks:
-        encoded = urllib.parse.quote(dork)
-        url = f"https://www.google.com/search?q={encoded}"
-        print(f"  {C}▸ {W}{desc:<30}{RS} {D}{url[:60]}{RS}")
-
-    print(f"\n  {C}{B}── WAYBACK MACHINE ───────────────────────{RS}")
-    wb_url = f"https://web.archive.org/web/*/instagram.com/{username}/"
-    dato("Historial", wb_url)
-    # Consultar Wayback
-    try:
-        r = requests.get(
-            f"https://archive.org/wayback/available?url=instagram.com/{username}/",
-            headers={"User-Agent": "cb-instahunter/1.0"},
-            timeout=8
-        )
-        if r.status_code == 200:
-            d = r.json()
-            snap = d.get("archived_snapshots", {}).get("closest", {})
-            if snap.get("available"):
-                dato("Snapshot más cercano", snap.get("timestamp", "—"))
-                dato("URL snapshot",         snap.get("url", "—"))
-            else:
-                warn("Sin snapshots en Wayback Machine")
-    except Exception:
-        warn("Wayback Machine no disponible")
-
-# ══════════════════════════════════════════════════════════════════════════════
-# MÓDULO 5 — RESUMEN
+# RESUMEN FINAL
 # ══════════════════════════════════════════════════════════════════════════════
 def modulo_resumen(username, data):
-    sep("RESUMEN DE INTELIGENCIA")
-    print(f"\n  {C}{B}Target:{RS}         {W}{B}@{username}{RS}")
-
+    sep("RESUMEN FINAL")
+    print(f"\n  {C}{B}Target:{RS}        {W}{B}@{username}{RS}")
     if not data.get("error"):
-        print(f"  {C}{B}Nombre:{RS}         {W}{data.get('full_name','—')}{RS}")
-        print(f"  {C}{B}ID:{RS}             {W}{data.get('id','—')}{RS}")
-        print(f"  {C}{B}Seguidores:{RS}     {W}{fmt_number(data.get('followers',0))}{RS}")
-        print(f"  {C}{B}Seguidos:{RS}       {W}{fmt_number(data.get('following',0))}{RS}")
-        print(f"  {C}{B}Posts:{RS}          {W}{data.get('posts',0)}{RS}")
-        print(f"  {C}{B}Privado:{RS}        {W}{'SÍ 🔒' if data.get('is_private') else 'NO 🌐'}{RS}")
-        print(f"  {C}{B}Verificado:{RS}     {W}{'SÍ ✓' if data.get('is_verified') else 'NO'}{RS}")
-        print(f"  {C}{B}Business:{RS}       {W}{'SÍ 💼' if data.get('is_business') else 'NO'}{RS}")
-    print(f"\n  {D}Análisis completado — Ciberbrigada OSINT Suite v1.0{RS}\n")
+        print(f"  {C}{B}Nombre:{RS}        {W}{data.get('full_name','—')}{RS}")
+        print(f"  {C}{B}ID:{RS}            {W}{data.get('id','—')}{RS}")
+        print(f"  {C}{B}Seguidores:{RS}    {W}{fmt_num(data.get('followers',0))}{RS}")
+        print(f"  {C}{B}Seguidos:{RS}      {W}{fmt_num(data.get('following',0))}{RS}")
+        print(f"  {C}{B}Posts:{RS}         {W}{data.get('posts',0)}{RS}")
+        print(f"  {C}{B}Privado:{RS}       {W}{'SÍ 🔒' if data.get('is_private') else 'NO 🌐'}{RS}")
+        print(f"  {C}{B}Verificado:{RS}    {W}{'SÍ ✓' if data.get('is_verified') else 'NO'}{RS}")
+        print(f"  {C}{B}Business:{RS}      {W}{'SÍ 💼' if data.get('is_business') else 'NO'}{RS}")
+        posts_data = data.get("recent_posts", [])
+        if posts_data:
+            total_likes = sum(int(p.get("likes",0)) for p in posts_data)
+            print(f"  {C}{B}Total likes:{RS}   {W}{fmt_num(total_likes)}{RS}")
+    print(f"\n  {D}Análisis completado — Ciberbrigada OSINT Suite v2.0{RS}\n")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 def main():
     banner()
-
     print(f"  {W}Ingresá el username de Instagram (sin @):{RS}\n")
 
     while True:
         try:
             username = input(f"  {C}▸ Username:{RS} ").strip().lstrip("@")
         except (KeyboardInterrupt, EOFError):
-            print(f"\n\n  {Y}Saliendo... Hasta pronto.{RS}\n")
-            sys.exit(0)
+            print(f"\n\n  {Y}Saliendo... Hasta pronto.{RS}\n"); sys.exit(0)
 
-        if username.lower() in ("salir", "exit", "quit", "q"):
-            print(f"\n  {Y}Saliendo... Hasta pronto.{RS}\n")
-            sys.exit(0)
+        if username.lower() in ("salir","exit","quit","q"):
+            print(f"\n  {Y}Saliendo... Hasta pronto.{RS}\n"); sys.exit(0)
 
-        if not username or len(username) < 1:
-            warn("Ingresá un username válido")
-            continue
-
-        if not re.match(r'^[a-zA-Z0-9._]+$', username):
-            warn("Username inválido — solo letras, números, puntos y guiones bajos")
-            continue
+        if not username or not re.match(r'^[a-zA-Z0-9._]+$', username):
+            warn("Username inválido"); continue
 
         print(f"\n  {C}Extrayendo datos de @{username}...{RS}")
-        print(f"  {D}Esto puede tardar unos segundos{RS}\n")
+        print(f"  {D}Conectando con Instagram, aguardá...{RS}\n")
 
         data = extraer_perfil(username)
 
-        # Menú de módulos
         sep("SELECCIONÁ LOS MÓDULOS")
         modulos = [
-            ("1", "Perfil          — Info completa del usuario"),
-            ("2", "Posts recientes — Últimas publicaciones y engagement"),
-            ("3", "Análisis        — Comportamiento, bio y detección"),
-            ("4", "Búsquedas       — Google Dorks y Wayback Machine"),
+            ("1", "Perfil       — Nombre, bio, seguidores, estado, foto"),
+            ("2", "Posts        — Publicaciones, likes, hashtags, engagement"),
+            ("3", "Inteligencia — Bio, comportamiento, anomalías"),
             ("0", "TODOS LOS MÓDULOS"),
         ]
         for num, desc in modulos:
@@ -717,17 +549,16 @@ def main():
 
         print()
         try:
-            sel = input(f"  {C}▸ Opción (ej: 0 o 1,3):{RS} ").strip()
+            sel = input(f"  {C}▸ Opción:{RS} ").strip()
         except (KeyboardInterrupt, EOFError):
             sys.exit(0)
 
-        selected = ["1","2","3","4"] if sel == "0" else [s.strip() for s in sel.split(",")]
+        selected = ["1","2","3"] if sel == "0" else [s.strip() for s in sel.split(",")]
         print()
 
         if "1" in selected: modulo_perfil(username, data)
         if "2" in selected: modulo_posts(username, data)
-        if "3" in selected: modulo_analisis(username, data)
-        if "4" in selected: modulo_externo(username, data)
+        if "3" in selected: modulo_inteligencia(username, data)
 
         modulo_resumen(username, data)
 
@@ -735,9 +566,8 @@ def main():
         print(f"\n  {D}¿Analizar otro usuario? (Enter / 'salir'){RS}")
         try:
             again = input(f"  {C}▸{RS} ").strip().lower()
-            if again in ("salir", "exit", "quit", "q"):
-                print(f"\n  {Y}Saliendo... Hasta pronto.{RS}\n")
-                sys.exit(0)
+            if again in ("salir","exit","quit","q"):
+                print(f"\n  {Y}Saliendo... Hasta pronto.{RS}\n"); sys.exit(0)
         except (KeyboardInterrupt, EOFError):
             sys.exit(0)
 
